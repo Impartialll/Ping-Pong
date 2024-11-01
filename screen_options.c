@@ -31,7 +31,7 @@
 #include "screens.h"
 #include <stdio.h>
 
-#define RAYGUI_IMPLEMENTATION
+#include "raygui.h"
 
 //----------------------------------------------------------------------------------
 // Module Variables Definition (local)

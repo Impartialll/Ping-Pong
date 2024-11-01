@@ -1,3 +1,6 @@
+#ifndef GAME_H
+#define GAME_H
+
 #include "raylib.h"
 #include <string.h>
 #include <sys/types.h>
@@ -72,3 +75,5 @@ extern bool singleplayer;
 
 Vector2 GetRandomBallSpeed(int minSpeed, int maxSpeed);
 void ResetBall(Ball *ball, int screenWidth, int screenHeight);
+
+#endif

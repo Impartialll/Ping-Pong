@@ -27,9 +27,9 @@
  *
  **********************************************************************************************/
 
-#include "raylib.h"
 #ifndef SCREENS_H
 #define SCREENS_H
+#include "raylib.h"
 
 #define SCREEN_W 640
 #define SCREEN_H 480
