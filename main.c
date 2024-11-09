@@ -1,63 +1,304 @@
-#include "start_menu.h"
+/*******************************************************************************************
+ *
+ *   raylib game template
+ *
+ *   <Game title>
+ *   <Game description>
+ *
+ *   This game has been created using raylib (www.raylib.com)
+ *   raylib is licensed under an unmodified zlib/libpng license (View raylib.h
+ *for details)
+ *
+ *   Copyright (c) 2021 Ramon Santamaria (@raysan5)
+ *
+ ********************************************************************************************/
+#include "screens.h"
 #include <stdbool.h>
 
-WindowSettings window = {
-    .title = "Ping pong",
-    .footer = "Created by two geniuses",
-    .screenWidth = SCREEN_W,
-    .screenHeight = SCREEN_H,
-    .targetFPS = 60,
-    .fontSize = (SCREEN_W / SCREEN_H) * 50,
-};
-WindowRect rect = {
-    .rectWidth = SCREEN_W / 2 + 200,
-    .rectHeight = SCREEN_H / 2 + 40,
-    .rectX = (SCREEN_W - (SCREEN_W / 2 + 200)) / 2,
-    .rectY = (SCREEN_H - (SCREEN_H / 2 + 40)) / 2,
-};
+//----------------------------------------------------------------------------------
+// Shared Variables Definition (global)
+// NOTE: Those variables are shared between modules through screens.h
+//----------------------------------------------------------------------------------
+GameScreen currentScreen = LOGO;
 
-GameState state = {.countdown = 3, .countdownTimer = 0.0f, .gamePaused = true};
+// Required variables to manage screen transitions (fade-in, fade-out)
+static float transAlpha = 0.0f;
+static bool onTransition = false;
+static bool transFadeOut = false;
+static int transFromScreen = -1;
+static GameScreen transToScreen = UNKNOWN;
 
-// Ball properties
-Ball ball = {
-    .position = {SCREEN_H / 2.0f, SCREEN_H / 2.0f}, .speed = {350}, .radius = 15.0f};
+//----------------------------------------------------------------------------------
+// Local Functions Declaration
+//----------------------------------------------------------------------------------
 
-// Paddles properties
-Paddle pd = {.paddleWidth = 20,
-             .paddleHeight = 100,
-             .leftPaddleX = 100,
-             .rightPaddleX = SCREEN_W - 120};
+static void
+ChangeToScreen(int screen); // Change to screen, no transition effect
+static void TransitionToScreen(int screen); // Request transition to next screen
+static void UpdateTransition(void);         // Update transition effect
+static void
+DrawTransition(void); // Draw transition effect (full-screen rectangle)
+static void UpdateDrawFrame(void); // Update and draw one frame
 
-Player player1 = {
-    .score = 0,
-    .position_y = (SCREEN_H - 100) / 2,
-};
+int main() {
+  InitWindow(SCREEN_W, SCREEN_H, "Pong Online");
+  SetMouseCursor(MOUSE_CURSOR_ARROW);
 
-Player player2 = {
-    .score = 0,
-    .position_y = (SCREEN_H - 100) / 2,
-};
+  // Setup and init first screen
+  currentScreen = LOGO;
+  InitLogoScreen();
 
-int main()
-{
-    InitWindow(SCREEN_W, SCREEN_H, "Pong Online");
-    SetMouseCursor(MOUSE_CURSOR_ARROW);
-    SetTargetFPS(60);
+  SetTargetFPS(60);
 
-    while (show_start_popup || show_ipset_popup)
-    {
-        // On window close
-        if (start_menu() == 1)
-        {
-            CloseWindow();
-            return 0;
-        }
+  while (!WindowShouldClose()) { // Detect window close button or ESC key
+    UpdateDrawFrame();
+  }
+
+  // De-Initialization
+  //--------------------------------------------------------------------------------------
+  // Unload current screen data before closing
+  switch (currentScreen) {
+  case LOGO:
+    UnloadLogoScreen();
+    break;
+  case TITLE:
+    UnloadTitleScreen();
+    break;
+  case GAMEPLAY:
+    UnloadGameplayScreen();
+    break;
+  case ENDING:
+    UnloadEndingScreen();
+    break;
+  default:
+    break;
+  }
+
+  // Unload global data loaded if needed (fonts, sounds, media)
+
+  CloseWindow(); // Close window and OpenGL context
+  return 0;
+}
+
+// Change to next screen, no transition
+static void ChangeToScreen(GameScreen screen) {
+  // Unload current screen
+  switch (currentScreen) {
+  case LOGO:
+    UnloadLogoScreen();
+    break;
+  case TITLE:
+    UnloadTitleScreen();
+    break;
+  case GAMEPLAY:
+    UnloadGameplayScreen();
+    break;
+  case ENDING:
+    UnloadEndingScreen();
+    break;
+  default:
+    break;
+  }
+
+  // Init next screen
+  switch (screen) {
+  case LOGO:
+    InitLogoScreen();
+    break;
+  case TITLE:
+    InitTitleScreen();
+    break;
+  case OPTIONS:
+    InitOptionsScreen();
+    break;
+  case GAMEPLAY:
+    InitGameplayScreen();
+    break;
+  case ENDING:
+    InitEndingScreen();
+    break;
+  default:
+    break;
+  }
+
+  currentScreen = screen;
+}
+
+// Request transition to next screen
+static void TransitionToScreen(GameScreen screen) {
+  onTransition = true;
+  transFadeOut = false;
+  transFromScreen = currentScreen;
+  transToScreen = screen;
+  transAlpha = 0.0f;
+}
+
+// Update transition effect (fade-in, fade-out)
+static void UpdateTransition(void) {
+  if (!transFadeOut) {
+    transAlpha += 0.05f;
+
+    // NOTE: Due to float internal representation, condition jumps on 1.0f
+    // instead of 1.05f For that reason we compare against 1.01f, to avoid last
+    // frame loading stop
+    if (transAlpha > 1.01f) {
+      transAlpha = 1.0f;
+
+      // Unload current screen
+      switch (transFromScreen) {
+      case LOGO:
+        UnloadLogoScreen();
+        break;
+      case TITLE:
+        UnloadTitleScreen();
+        break;
+      case OPTIONS:
+        UnloadOptionsScreen();
+        break;
+      case GAMEPLAY:
+        UnloadGameplayScreen();
+        break;
+      case ENDING:
+        UnloadEndingScreen();
+        break;
+      default:
+        break;
+      }
+
+      // Load next screen
+      switch (transToScreen) {
+      case LOGO:
+        InitLogoScreen();
+        break;
+      case TITLE:
+        InitTitleScreen();
+        break;
+      case OPTIONS:
+        InitOptionsScreen();
+        break;
+      case GAMEPLAY:
+        InitGameplayScreen();
+        break;
+      case ENDING:
+        InitEndingScreen();
+        break;
+      default:
+        break;
+      }
+
+      currentScreen = transToScreen;
+
+      // Activate fade out effect to next loaded screen
+      transFadeOut = true;
     }
+  } else // Transition fade out logic
+  {
+    transAlpha -= 0.02f;
 
-    if (singleplayer)
-    {
-        return main_loop(player1, player2, rect, pd, state, ball, window);
+    if (transAlpha < -0.01f) {
+      transAlpha = 0.0f;
+      transFadeOut = false;
+      onTransition = false;
+      transFromScreen = -1;
+      transToScreen = UNKNOWN;
     }
+  }
+}
 
-    return 0;
+// Draw transition effect (full-screen rectangle)
+static void DrawTransition(void) {
+  DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(),
+                Fade(BLACK, transAlpha));
+}
+
+// Update and draw game frame
+static void UpdateDrawFrame(void) {
+  // Update
+  //----------------------------------------------------------------------------------
+
+  if (!onTransition) {
+    switch (currentScreen) {
+    case LOGO: {
+      UpdateLogoScreen();
+
+      if (FinishLogoScreen())
+        TransitionToScreen(TITLE);
+
+    } break;
+    case TITLE: {
+      UpdateTitleScreen();
+
+      if (FinishTitleScreen() == 1)
+        TransitionToScreen(OPTIONS);
+      else if (FinishTitleScreen() == 2)
+        TransitionToScreen(GAMEPLAY);
+
+    } break;
+    case OPTIONS: {
+      UpdateOptionsScreen();
+
+      if (FinishOptionsScreen() == 1)
+        TransitionToScreen(TITLE);
+
+    } break;
+    case GAMEPLAY: {
+      UpdateGameplayScreen();
+
+      if (FinishGameplayScreen() == 1)
+        TransitionToScreen(TITLE);
+      // else if (FinishGameplayScreen() == 2) TransitionToScreen(TITLE);
+
+    } break;
+    case ENDING: {
+      UpdateEndingScreen();
+
+      if (FinishEndingScreen() == 1)
+        TransitionToScreen(TITLE);
+
+    } break;
+    default:
+      break;
+    }
+  } else
+    UpdateTransition(); // Update transition (fade-in, fade-out)
+  //----------------------------------------------------------------------------------
+
+  // Draw
+  //----------------------------------------------------------------------------------
+  BeginDrawing();
+
+  if (currentScreen == GAMEPLAY) {
+    ClearBackground(LIGHTGRAY);
+  } else {
+    ClearBackground(RAYWHITE);
+  }
+
+  switch (currentScreen) {
+  case LOGO:
+    DrawLogoScreen();
+    break;
+  case TITLE:
+    DrawTitleScreen();
+    break;
+  case OPTIONS:
+    DrawOptionsScreen();
+    break;
+  case GAMEPLAY:
+    DrawGameplayScreen();
+    break;
+  case ENDING:
+    DrawEndingScreen();
+    break;
+  default:
+    break;
+  }
+
+  // Draw full screen rectangle in front of everything
+  if (onTransition)
+    DrawTransition();
+
+  DrawFPS(10, 10);
+
+  EndDrawing();
+  //----------------------------------------------------------------------------------
 }
